@@ -1,0 +1,83 @@
+@import "tailwindcss";
+@import "uniwind";
+
+/*
+ * Semantic design tokens. Declared per theme so `bg-<name>` / `text-<name>`
+ * resolve to the active light/dark value. Primary = black (white in dark mode).
+ * Keep these in sync with `Colors` in src/constants/theme.ts (used for the
+ * handful of native props that can't take a className).
+ */
+@layer theme {
+  :root {
+    /*
+     * iOS grouped-surface model:
+     *   background = plain screen bg (systemBackground)
+     *   sheet      = warm grouped canvas used behind sheet cards
+     *   muted      = grouped surface / subtle fills (systemGroupedBackground) — sheets & card-screens
+     *   card       = elevated surface sitting on `muted` (secondarySystemGroupedBackground)
+     */
+    /*
+     * Radius tokens live inside BOTH variants — uniwind only turns variables
+     * declared in theme variants into utilities (`rounded-card`, `rounded-tile`),
+     * and every theme must declare the same set.
+     *   card = cards, list groups, inputs, selects, banners, option rows.
+     *         22 = the button pill curvature (buttons are 44pt tall → 22px radius),
+     *   tile = small square icon containers + OTP boxes, kept softer so
+     *          icons/digits don't sit in circles.
+     */
+    @variant light {
+      --radius-card: 22px;
+      --radius-tile: 16px;
+      --color-background: #ffffff;
+      --color-sheet: #ffffff;
+      --color-foreground: #000000;
+      --color-card: #f7f7f5;
+      --color-card-foreground: #000000;
+      --color-primary: #000000;
+      --color-primary-foreground: #ffffff;
+      --color-secondary: #f7f7f5;
+      --color-secondary-foreground: #000000;
+      --color-muted: #00000014;
+      --color-muted-foreground: #8e8e93;
+      --color-destructive: #ff3b30;
+      --color-destructive-foreground: #ffffff;
+      --color-border: #0000000d;
+      --color-input: #f7f7f5;
+      --color-ring: #000000;
+    }
+
+    @variant dark {
+      --radius-card: 22px;
+      --radius-tile: 16px;
+      --color-background: #000000;
+      --color-sheet: #111113;
+      --color-foreground: #ffffff;
+      --color-card: #ffffff14;
+      --color-card-foreground: #ffffff;
+      --color-primary: #ffffff;
+      --color-primary-foreground: #000000;
+      --color-secondary: #111113;
+      --color-secondary-foreground: #ffffff;
+      --color-muted: #ffffff14;
+      --color-muted-foreground: #8e8e93;
+      --color-destructive: #ff453a;
+      --color-destructive-foreground: #ffffff;
+      --color-border: #ffffff14;
+      --color-input: #111113;
+      --color-ring: #ffffff;
+    }
+  }
+}
+
+:root {
+  --font-display:
+    Spline Sans, Inter, ui-sans-serif, system-ui, sans-serif, Apple Color Emoji,
+    Segoe UI Emoji, Segoe UI Symbol, Noto Color Emoji;
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono,
+    Courier New, monospace;
+  --font-rounded:
+    "SF Pro Rounded", "Hiragino Maru Gothic ProN", Meiryo, "MS PGothic",
+    sans-serif;
+  --font-serif: Georgia, "Times New Roman", serif;
+}

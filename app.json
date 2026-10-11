@@ -1,0 +1,60 @@
+{
+  "expo": {
+    "name": "PiperNet",
+    "slug": "pipernet",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/branding/wordmark-icon.png",
+    "scheme": "pipernet",
+    "userInterfaceStyle": "automatic",
+    "platforms": ["ios", "android"],
+    "ios": {
+      "bundleIdentifier": "com.boywithacap.pipernet",
+      "supportsTablet": true,
+      "icon": {
+        "light": "./assets/images/branding/wordmark-icon.png",
+        "dark": "./assets/images/branding/wordmark-icon-dark.png"
+      }
+    },
+    "android": {
+      "package": "com.boywithacap.pipernet",
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/images/branding/wordmark-android.png",
+        "monochromeImage": "./assets/images/branding/wordmark-android.png"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#ffffff",
+          "image": "./assets/images/branding/native-splash.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#000000",
+            "image": "./assets/images/branding/native-splash.png"
+          }
+        }
+      ],
+      "@react-native-vector-icons/lucide",
+      "expo-font",
+      "expo-video",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow PiperNet to capture photos and videos.",
+          "microphonePermission": "Allow PiperNet to record sound with your videos.",
+          "recordAudioAndroid": true,
+          "barcodeScannerEnabled": false
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

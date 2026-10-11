@@ -1,0 +1,301 @@
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { useReducedMotion } from "react-native-reanimated";
+import { MediaPreview } from "@/components/media-preview";
+import { StateIllustration } from "@/components/state-illustration";
+import { Button } from "@/components/ui/button";
+import { Icon } from "@/components/ui/icon";
+import { Screen } from "@/components/ui/screen";
+import { TabScreen } from "@/components/ui/tab-screen";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { sonner } from "@/components/ui/sonner";
+import { Text } from "@/components/ui/text";
+import { useMedia } from "@/hooks/use-media";
+import { useTheme } from "@/hooks/use-theme";
+import { mediaUri, thumbnailUri } from "@/lib/media-files";
+import { formatBytes, formatDuration } from "@/lib/media-policy";
+import type { MediaItem } from "@/types/media";
+
+export default function InboxScreen() {
+  const theme = useTheme();
+  const { width } = useWindowDimensions();
+  const { view } = useLocalSearchParams<{ view?: string }>();
+  const reducedMotion = useReducedMotion();
+  const filter: MediaItem["direction"] =
+    view === "queued" ? "outgoing" : "received";
+  const [selected, setSelected] = useState<MediaItem | null>(null);
+  const [contentWidth, setContentWidth] = useState(Math.min(width, 800));
+  const items = useMedia((state) => state.items);
+  const status = useMedia((state) => state.status);
+  const hydrate = useMedia((state) => state.hydrate);
+  const markRead = useMedia((state) => state.markRead);
+  const visibleItems = items.filter((item) => item.direction === filter);
+  const queued = items.filter((item) => item.direction === "outgoing").length;
+  const columns = contentWidth >= 600 ? 3 : 2;
+  const tileWidth = (contentWidth - 32 - (columns - 1) * 12) / columns;
+
+  function open(item: MediaItem) {
+    setSelected(item);
+    if (!item.read)
+      void markRead(item.id).catch(() =>
+        sonner.error("Couldn’t update your library."),
+      );
+  }
+
+  return (
+    <TabScreen>
+      <View
+        className="flex-1 w-full max-w-[800px] self-center"
+        onLayout={(event) => setContentWidth(event.nativeEvent.layout.width)}
+      >
+        <View className="flex-row items-center justify-between px-5 py-3">
+          <Text
+            accessibilityRole="header"
+            className="text-2xl font-semibold tracking-[-0.8px]"
+          >
+            Inbox
+          </Text>
+        </View>
+        <View className="px-4 pb-4 pt-2">
+          <SegmentedControl
+            value={filter}
+            options={[
+              { value: "received", label: "Received" },
+              {
+                value: "outgoing",
+                label: queued ? `Queued (${queued})` : "Queued",
+              },
+            ]}
+            onChange={(value) =>
+              router.setParams({
+                view: value === "outgoing" ? "queued" : "received",
+              })
+            }
+          />
+        </View>
+        {status === "loading" || status === "idle" ? (
+          <View className="flex-1 items-center justify-center px-6 pb-16">
+            <ActivityIndicator
+              color={theme.foreground}
+              accessibilityLabel="Loading media"
+            />
+          </View>
+        ) : status === "error" ? (
+          <View className="flex-1 items-center justify-center px-6 pb-16">
+            <StateIllustration kind="inbox" />
+            <Text
+              accessibilityRole="alert"
+              className="my-5 text-lg font-medium"
+            >
+              Couldn’t open your library
+            </Text>
+            <Button onPress={() => void hydrate()}>Try again</Button>
+          </View>
+        ) : visibleItems.length === 0 ? (
+          <View className="flex-1 items-center justify-center px-6 pb-16">
+            <View className="mb-5">
+              <StateIllustration
+                kind={filter === "received" ? "inbox" : "capture"}
+              />
+            </View>
+            <Text className="text-lg font-medium">
+              {filter === "received" ? "Inbox empty" : "Queue empty"}
+            </Text>
+            <Button
+              variant="surface"
+              containerClassName="mt-6"
+              onPress={() => router.navigate("/(tabs)")}
+            >
+              Record
+            </Button>
+          </View>
+        ) : (
+          <FlatList
+            key={columns}
+            data={visibleItems}
+            numColumns={columns}
+            keyExtractor={(item) => item.id}
+            contentInsetAdjustmentBehavior="never"
+            showsVerticalScrollIndicator={false}
+            contentContainerClassName="px-4 pt-0.5 pb-6"
+            columnWrapperClassName="gap-3"
+            initialNumToRender={12}
+            windowSize={5}
+            renderItem={({ item }) => (
+              <MomentTile
+                item={item}
+                width={tileWidth}
+                onPress={() => open(item)}
+              />
+            )}
+          />
+        )}
+      </View>
+      <Modal
+        visible={selected !== null}
+        animationType={reducedMotion ? "none" : "slide"}
+        presentationStyle="fullScreen"
+        onRequestClose={() => setSelected(null)}
+      >
+        {selected ? (
+          <MomentViewer
+            key={selected.id}
+            item={selected}
+            onClose={() => setSelected(null)}
+          />
+        ) : null}
+      </Modal>
+    </TabScreen>
+  );
+}
+
+function MomentTile({
+  item,
+  width,
+  onPress,
+}: {
+  item: MediaItem;
+  width: number;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  const uri = thumbnailUri(item);
+  const [failed, setFailed] = useState(false);
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={`${item.read ? "" : "Unread "}${item.kind} ${item.direction === "received" ? `from ${item.sender || "nearby"}` : "queued to share"}, ${formatBytes(item.bytes)}`}
+      className="mb-[18px] active:opacity-70"
+      style={{ width }}
+    >
+      <View
+        className="aspect-[0.8] items-center justify-center overflow-hidden rounded-card bg-card"
+        style={{ borderCurve: "continuous" }}
+      >
+        {uri && !failed ? (
+          <Image
+            source={{ uri }}
+            className="absolute inset-0"
+            resizeMode="cover"
+            onError={() => setFailed(true)}
+          />
+        ) : (
+          <Icon
+            name={item.kind === "video" ? "video" : "image-off"}
+            size={28}
+            color={theme.mutedForeground}
+          />
+        )}
+        {item.kind === "video" ? (
+          <View className="absolute bottom-2.5 right-2.5 flex-row items-center gap-1 rounded-[20px] bg-[#00000080] px-2 py-[5px]">
+            <Icon name="play" size={11} color="#ffffff" />
+            <Text className="text-[11px] text-white">
+              {item.duration ? formatDuration(item.duration) : "Video"}
+            </Text>
+          </View>
+        ) : null}
+        {!item.read ? (
+          <View className="absolute right-3 top-3 size-2 rounded-full border border-[#00000020] bg-white" />
+        ) : null}
+      </View>
+      <View className="mt-2 flex-row items-center justify-between gap-2 px-1">
+        <Text numberOfLines={1} className="flex-1 text-sm font-medium">
+          {item.direction === "received" ? item.sender || "Nearby" : "Queued"}
+        </Text>
+        <Text className="text-xs text-muted-foreground">
+          {formatBytes(item.bytes)}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
+
+function MomentViewer({
+  item,
+  onClose,
+}: {
+  item: MediaItem;
+  onClose: () => void;
+}) {
+  const theme = useTheme();
+  const remove = useMedia((state) => state.remove);
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  async function deleteMoment() {
+    if (deleting) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await remove(item.id);
+      onClose();
+    } catch {
+      setError("Couldn’t delete. Try again.");
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <Screen
+      edges={["top", "bottom", "left", "right"]}
+      className="flex-1 bg-background"
+    >
+      <View className="flex-row items-center justify-between px-4 py-3">
+        <Button
+          variant="surface"
+          size="icon"
+          accessibilityLabel="Close preview"
+          onPress={onClose}
+        >
+          <Icon name="x" size={22} color={theme.foreground} />
+        </Button>
+        <Text className="text-sm font-medium">
+          {item.direction === "received"
+            ? item.sender || "Nearby"
+            : "Queued to share"}
+        </Text>
+        <View className="w-11" />
+      </View>
+      <View className="mx-3 flex-1 overflow-hidden rounded-[28px]">
+        <MediaPreview uri={mediaUri(item)} kind={item.kind} />
+      </View>
+      <View className="gap-4 px-6 py-5">
+        <View className="flex-row items-center justify-between">
+          <Text className="text-sm text-muted-foreground">
+            {new Date(item.createdAt).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}
+          </Text>
+          <Text className="text-sm text-muted-foreground">
+            {formatBytes(item.bytes)}
+            {item.duration ? ` · ${formatDuration(item.duration)}` : ""}
+          </Text>
+        </View>
+        {error ? (
+          <Text accessibilityRole="alert" className="text-sm text-destructive">
+            {error}
+          </Text>
+        ) : null}
+        <Button
+          variant="surface"
+          loading={deleting}
+          onPress={() => void deleteMoment()}
+          accessibilityLabel="Delete media from device"
+        >
+          <Icon name="trash-2" size={17} color={theme.mutedForeground} />
+          <Text className="text-muted-foreground">Delete</Text>
+        </Button>
+      </View>
+    </Screen>
+  );
+}
