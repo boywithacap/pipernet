@@ -72,6 +72,35 @@ test("concurrent writes preserve every capture and received duplicates are idemp
   assert.equal(saved.size, 3);
 });
 
+test("capture time survives delayed queueing, receiving, and restart", async () => {
+  const { store, storage, files } = setup();
+  const createdAt = Date.now() - 60_000;
+  const draft = { ...photo, createdAt };
+  const queued = await store.getState().queue(draft);
+  const received = await store
+    .getState()
+    .receive("dated-peer-1", "Nearby", draft);
+  assert.equal(queued.createdAt, createdAt);
+  assert.equal(received.createdAt, createdAt);
+  const restarted = createMediaStore(storage, files);
+  await restarted.getState().hydrate();
+  assert.ok(
+    restarted.getState().items.every((item) => item.createdAt === createdAt),
+  );
+});
+
+test("invalid capture times fail before copying media", async () => {
+  const { store, saved } = setup();
+  for (const createdAt of [NaN, Infinity, 0, -1, 1.5, 8_640_000_000_000_001]) {
+    await assert.rejects(
+      store.getState().queue({ ...photo, createdAt }),
+      /Invalid capture time/,
+    );
+  }
+  assert.equal(saved.size, 0);
+  assert.equal(store.getState().items.length, 0);
+});
+
 test("failed persistence rolls back copied files and a later retry succeeds", async () => {
   const { storage, files, saved } = setup();
   let fail = true;

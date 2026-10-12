@@ -1,0 +1,5 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": { "modules": ["PiperNearbyModule"] },
+  "android": { "modules": ["expo.modules.pipernearby.PiperNearbyModule"] }
+}

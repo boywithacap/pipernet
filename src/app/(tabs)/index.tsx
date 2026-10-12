@@ -26,6 +26,7 @@ import { sonner } from "@/components/ui/sonner";
 import { Text } from "@/components/ui/text";
 import { useAppActive } from "@/hooks/use-app-active";
 import { useMedia } from "@/hooks/use-media";
+import { meshCoordinator } from "@/hooks/use-mesh";
 import { useTheme } from "@/hooks/use-theme";
 import { createCaptureGesture, type VideoIntent } from "@/lib/capture-gesture";
 import {
@@ -129,12 +130,33 @@ export default function RecordScreen() {
     return () => clearInterval(timer);
   }, [recording]);
 
-  function showDraft(value: MediaDraft) {
+  async function showDraft(value: MediaDraft) {
     if (!mounted.current) {
       discardDraft(value);
       return;
     }
     draftRef.current = value;
+    if (meshCoordinator.getSnapshot().enabled) {
+      // The library owns this in-flight copy; unmount must not delete its source.
+      draftRef.current = null;
+      try {
+        await queue(value);
+        discardDraft(value);
+        draftRef.current = null;
+        return;
+      } catch {
+        draftRef.current = value;
+        if (mounted.current)
+          sonner.error(
+            "Couldn’t queue capture. You can retry from the preview.",
+          );
+      }
+    }
+    if (!mounted.current) {
+      discardDraft(value);
+      draftRef.current = null;
+      return;
+    }
     setDraft(value);
   }
   function retake() {
@@ -156,6 +178,7 @@ export default function RecordScreen() {
     )
       return;
     const capture = {};
+    const createdAt = Date.now();
     operation.current = capture;
     hapticButtonPress();
     let sourceUri: string | undefined;
@@ -166,7 +189,9 @@ export default function RecordScreen() {
         exif: false,
       });
       sourceUri = photo.uri;
-      showDraft(await compressPhoto(photo.uri, photo.width, photo.height));
+      await showDraft(
+        await compressPhoto(photo.uri, photo.width, photo.height, createdAt),
+      );
     } catch (error) {
       if (mounted.current)
         sonner.error(
@@ -233,8 +258,9 @@ export default function RecordScreen() {
       }
       return;
     }
-    // Photo and video use different native outputs on both platforms.
-    // Start from onCameraReady after remounting the video camera.
+    // Android rebinds its outputs on this view. Remounting here lets the old
+    // view's unbindAll() tear down the new recording session.
+    // iOS emits readiness only once per view, so it still needs a fresh view.
     setReady(false);
     setMode("video");
   }
@@ -271,7 +297,7 @@ export default function RecordScreen() {
       }
       if (result) {
         sourceUri = result.uri;
-        showDraft(await prepareVideo(result.uri));
+        await showDraft(await prepareVideo(result.uri, startedAt.current));
         sourceUri = undefined;
       }
     } catch (error) {
@@ -396,7 +422,11 @@ export default function RecordScreen() {
             </View>
           ) : cameraActive ? (
             <CaptureCamera
-              key={`${mode}-${facing}-${!!microphone?.granted}-${cameraSession}`}
+              key={
+                Platform.OS === "android"
+                  ? cameraSession
+                  : `${mode}-${facing}-${!!microphone?.granted}-${cameraSession}`
+              }
               attach={attachCamera}
               className="absolute inset-0"
               facing={facing}

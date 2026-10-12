@@ -102,6 +102,13 @@ export function createMediaStore(storage: Storage, files: MediaFiles) {
         const existing = get().items.find((item) => item.id === id);
         if (existing) return existing;
         assertMediaSize(draft.kind, draft.bytes);
+        const createdAt = draft.createdAt ?? Date.now();
+        if (
+          !Number.isSafeInteger(createdAt) ||
+          createdAt <= 0 ||
+          !Number.isFinite(new Date(createdAt).getTime())
+        )
+          throw new Error("Invalid capture time.");
         const saved = await files.save(id, draft);
         const item: MediaItem = {
           ...saved,
@@ -109,7 +116,7 @@ export function createMediaStore(storage: Storage, files: MediaFiles) {
           kind: draft.kind,
           bytes: draft.bytes,
           duration: draft.duration,
-          createdAt: Date.now(),
+          createdAt,
           direction,
           sender,
           read: direction === "outgoing",

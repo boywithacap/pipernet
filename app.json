@@ -14,6 +14,9 @@
       "icon": {
         "light": "./assets/images/branding/wordmark-icon.png",
         "dark": "./assets/images/branding/wordmark-icon-dark.png"
+      },
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -22,7 +25,13 @@
         "backgroundColor": "#ffffff",
         "foregroundImage": "./assets/images/branding/wordmark-android.png",
         "monochromeImage": "./assets/images/branding/wordmark-android.png"
-      }
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-router",
@@ -50,11 +59,29 @@
           "recordAudioAndroid": true,
           "barcodeScannerEnabled": false
         }
-      ]
+      ],
+      "react-native-compressor",
+      "./plugins/with-nearby"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "6d1dd0b4-9dc5-4c2f-bcee-1b937471fcac"
+      }
+    },
+    "owner": "sreedhar_k.s",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/6d1dd0b4-9dc5-4c2f-bcee-1b937471fcac",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
     }
   }
 }

@@ -1,18 +1,22 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
   Image,
   Modal,
+  Platform,
   Pressable,
   useWindowDimensions,
   View,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useReducedMotion } from "react-native-reanimated";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { MediaPreview } from "@/components/media-preview";
 import { StateIllustration } from "@/components/state-illustration";
 import { Button } from "@/components/ui/button";
+import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { Icon } from "@/components/ui/icon";
 import { Screen } from "@/components/ui/screen";
 import { TabScreen } from "@/components/ui/tab-screen";
@@ -20,10 +24,13 @@ import { SegmentedControl } from "@/components/ui/segmented-control";
 import { sonner } from "@/components/ui/sonner";
 import { Text } from "@/components/ui/text";
 import { useMedia } from "@/hooks/use-media";
+import { useMesh } from "@/hooks/use-mesh";
 import { useTheme } from "@/hooks/use-theme";
 import { mediaUri, thumbnailUri } from "@/lib/media-files";
 import { formatBytes, formatDuration } from "@/lib/media-policy";
+import { formatCaptureDateTime } from "@/lib/capture-time";
 import type { MediaItem } from "@/types/media";
+import { MESH_LIMITS } from "@/lib/mesh/protocol";
 
 export default function InboxScreen() {
   const theme = useTheme();
@@ -64,6 +71,14 @@ export default function InboxScreen() {
           >
             Inbox
           </Text>
+          <Button
+            variant="plain"
+            size="icon"
+            accessibilityLabel="Open settings"
+            onPress={() => router.navigate("/settings")}
+          >
+            <Icon name="settings" size={23} color={theme.foreground} />
+          </Button>
         </View>
         <View className="px-4 pb-4 pt-2">
           <SegmentedControl
@@ -146,13 +161,15 @@ export default function InboxScreen() {
         presentationStyle="fullScreen"
         onRequestClose={() => setSelected(null)}
       >
-        {selected ? (
-          <MomentViewer
-            key={selected.id}
-            item={selected}
-            onClose={() => setSelected(null)}
-          />
-        ) : null}
+        <SafeAreaProvider style={{ backgroundColor: theme.background }}>
+          {selected ? (
+            <MomentViewer
+              key={selected.id}
+              item={selected}
+              onClose={() => setSelected(null)}
+            />
+          ) : null}
+        </SafeAreaProvider>
       </Modal>
     </TabScreen>
   );
@@ -170,6 +187,21 @@ function MomentTile({
   const theme = useTheme();
   const uri = thumbnailUri(item);
   const [failed, setFailed] = useState(false);
+  const delivery = useMesh((state) =>
+    state.records.find((record) => record.mediaId === item.id),
+  );
+  const transfer = useMesh((state) =>
+    state.transfer?.mediaId === item.id ? state.transfer : undefined,
+  );
+  const shared = delivery?.deliveredTo.length ?? 0;
+  const updatedAt = useMesh((state) => state.updatedAt);
+  const sharingLabel = transfer
+    ? "Sending"
+    : shared
+      ? `Shared · ${shared}`
+      : item.createdAt + MESH_LIMITS.lifetime <= updatedAt
+        ? "Expired"
+        : "Queued";
   return (
     <Pressable
       onPress={onPress}
@@ -210,7 +242,9 @@ function MomentTile({
       </View>
       <View className="mt-2 flex-row items-center justify-between gap-2 px-1">
         <Text numberOfLines={1} className="flex-1 text-sm font-medium">
-          {item.direction === "received" ? item.sender || "Nearby" : "Queued"}
+          {item.direction === "received"
+            ? item.sender || "Nearby"
+            : sharingLabel}
         </Text>
         <Text className="text-xs text-muted-foreground">
           {formatBytes(item.bytes)}
@@ -230,17 +264,68 @@ function MomentViewer({
   const theme = useTheme();
   const remove = useMedia((state) => state.remove);
   const [deleting, setDeleting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const mounted = useRef(true);
+  const deletePending = useRef(false);
+  const confirmationPending = useRef(false);
+  const title = `Delete ${item.kind}?`;
+  const message =
+    "This removes it from this phone. Copies already shared stay on other phones.";
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+
+  function cancelDelete() {
+    confirmationPending.current = false;
+    if (mounted.current) setConfirming(false);
+  }
+
+  function confirmDelete() {
+    if (
+      !mounted.current ||
+      deletePending.current ||
+      confirmationPending.current
+    )
+      return;
+    confirmationPending.current = true;
+    if (Platform.OS === "ios") {
+      Alert.alert(title, message, [
+        { text: "Cancel", style: "cancel", onPress: cancelDelete },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => void deleteMoment(),
+        },
+      ]);
+    } else setConfirming(true);
+  }
+
   async function deleteMoment() {
-    if (deleting) return;
+    if (
+      !mounted.current ||
+      !confirmationPending.current ||
+      deletePending.current
+    )
+      return;
+    confirmationPending.current = false;
+    deletePending.current = true;
+    setConfirming(false);
     setDeleting(true);
     setError(null);
     try {
       await remove(item.id);
-      onClose();
+      if (mounted.current) onClose();
     } catch {
-      setError("Couldn’t delete. Try again.");
-      setDeleting(false);
+      if (mounted.current) {
+        setError("Couldn’t delete. Try again.");
+        setDeleting(false);
+      }
+    } finally {
+      deletePending.current = false;
     }
   }
 
@@ -249,34 +334,35 @@ function MomentViewer({
       edges={["top", "bottom", "left", "right"]}
       className="flex-1 bg-background"
     >
-      <View className="flex-row items-center justify-between px-4 py-3">
+      <View className="flex-row items-center gap-3 px-4 py-3">
         <Button
           variant="surface"
           size="icon"
           accessibilityLabel="Close preview"
+          disabled={deleting}
           onPress={onClose}
         >
           <Icon name="x" size={22} color={theme.foreground} />
         </Button>
-        <Text className="text-sm font-medium">
+        <Text
+          numberOfLines={1}
+          className="min-w-0 flex-1 text-center text-sm font-medium"
+        >
           {item.direction === "received"
             ? item.sender || "Nearby"
             : "Queued to share"}
         </Text>
-        <View className="w-11" />
+        <View className="w-11 shrink-0" />
       </View>
       <View className="mx-3 flex-1 overflow-hidden rounded-[28px]">
         <MediaPreview uri={mediaUri(item)} kind={item.kind} />
       </View>
       <View className="gap-4 px-6 py-5">
-        <View className="flex-row items-center justify-between">
-          <Text className="text-sm text-muted-foreground">
-            {new Date(item.createdAt).toLocaleDateString(undefined, {
-              month: "short",
-              day: "numeric",
-            })}
+        <View className="flex-row items-center justify-between gap-3">
+          <Text className="min-w-0 flex-1 text-sm text-muted-foreground">
+            {formatCaptureDateTime(item.createdAt)}
           </Text>
-          <Text className="text-sm text-muted-foreground">
+          <Text className="shrink-0 text-sm text-muted-foreground">
             {formatBytes(item.bytes)}
             {item.duration ? ` · ${formatDuration(item.duration)}` : ""}
           </Text>
@@ -287,15 +373,25 @@ function MomentViewer({
           </Text>
         ) : null}
         <Button
-          variant="surface"
+          variant="destructive"
           loading={deleting}
-          onPress={() => void deleteMoment()}
+          onPress={confirmDelete}
           accessibilityLabel="Delete media from device"
         >
-          <Icon name="trash-2" size={17} color={theme.mutedForeground} />
-          <Text className="text-muted-foreground">Delete</Text>
+          <Icon name="trash-2" size={17} color={theme.destructiveForeground} />
+          Delete
         </Button>
       </View>
+      {Platform.OS !== "ios" ? (
+        <ConfirmationDialog
+          visible={confirming}
+          title={title}
+          message={message}
+          confirmLabel="Delete"
+          onCancel={cancelDelete}
+          onConfirm={() => void deleteMoment()}
+        />
+      ) : null}
     </Screen>
   );
 }

@@ -85,3 +85,22 @@ test("a failed native request is reported so onboarding can retry", async () => 
     /Request failed/,
   );
 });
+
+test("a departed camera permission screen does not open a late microphone prompt", async () => {
+  const controller = new AbortController();
+  await assert.rejects(
+    requestCaptureAccess({
+      signal: controller.signal,
+      camera: undecided,
+      microphone: undecided,
+      requestCamera: async () => {
+        controller.abort();
+        return allowed;
+      },
+      requestMicrophone: async () => {
+        throw new Error("Unexpected late prompt");
+      },
+    }),
+    { name: "AbortError" },
+  );
+});

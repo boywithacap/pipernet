@@ -36,6 +36,7 @@ const pressTransition = {
 const variantClasses = {
   primary: "bg-primary shadow-xs",
   secondary: "bg-secondary shadow-xs",
+  destructive: "bg-destructive shadow-xs",
   outlined: "bg-card border border-border shadow-xs",
   surface: "bg-card",
   plain: "",
@@ -46,6 +47,7 @@ const variantClasses = {
 const variantTextClasses = {
   primary: "text-primary-foreground",
   secondary: "text-secondary-foreground",
+  destructive: "text-destructive-foreground",
   outlined: "text-foreground",
   surface: "text-foreground",
   plain: "text-foreground",
@@ -78,12 +80,14 @@ export type ButtonSize = keyof typeof sizeClasses;
 const glassTintVariants = {
   primary: "primary",
   secondary: "secondary",
+  destructive: "destructive",
 } as const;
 
 // Spinner/tint color per variant, matching the label color.
 const variantForeground = {
   primary: "primaryForeground",
   secondary: "secondaryForeground",
+  destructive: "destructiveForeground",
   outlined: "foreground",
   surface: "foreground",
   plain: "foreground",

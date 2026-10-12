@@ -31,6 +31,11 @@ test("creates an independent starter with fresh identity and no generated files"
     assert.equal(config.ios.bundleIdentifier, "com.example.myapp");
     assert.equal(config.android.package, "com.example.myapp");
     assert.equal(config.extra?.eas, undefined);
+    assert.equal(config.updates, undefined);
+    assert.equal(
+      readJson(join(destination, "eas.json")).submit?.production?.ios?.ascAppId,
+      undefined,
+    );
     assert.equal(readJson(join(destination, "package.json")).name, "my-app");
     assert.match(
       readFileSync(join(destination, "src/constants/app.ts"), "utf8"),
@@ -41,6 +46,19 @@ test("creates an independent starter with fresh identity and no generated files"
       /"name": "my-app"/,
     );
     assert.ok(existsSync(join(destination, "src/components/ui/button.tsx")));
+    assert.ok(
+      existsSync(
+        join(
+          destination,
+          "modules/nearby-transport/ios/PiperNearbyModule.swift",
+        ),
+      ),
+    );
+    assert.ok(
+      existsSync(
+        join(destination, "modules/nearby-transport/android/build.gradle"),
+      ),
+    );
     for (const name of [
       "node_modules",
       ".git",

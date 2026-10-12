@@ -5,9 +5,17 @@ export const MEDIA_LIMITS = {
   photoBytes: 100 * 1024,
   videoSeconds: 60,
   videoBitrate: 400_000,
+  videoEdge: 480,
+  videoTargetBytes: 3 * 1024 * 1024,
   // Room for 60 seconds of compressed video, audio, and container overhead.
   videoBytes: 5 * 1024 * 1024,
 } as const;
+
+export const VIDEO_COMPRESSION_PASSES = [
+  { maxSize: MEDIA_LIMITS.videoEdge, bitrate: 240_000 },
+  { maxSize: 360, bitrate: 160_000 },
+  { maxSize: 240, bitrate: 96_000 },
+] as const;
 
 export function assertMediaSize(kind: MediaKind, bytes: number) {
   const limit =

@@ -27,8 +27,8 @@ export default function NearbySharingScreen() {
           Nearby sharing
         </Text>
         <Text className="max-w-[330px] text-center text-[17px] leading-[25px] opacity-65">
-          Photos and videos will pass between nearby phones. For now, captures
-          stay on this device.
+          Share photos and videos with nearby phones, without internet.
+          Connected phones can view and keep what you share.
         </Text>
       </OnboardingCopy>
     </OnboardingFrame>

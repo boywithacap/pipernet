@@ -74,7 +74,9 @@ cpSync(template, destination, {
   filter: (source) => {
     const name = basename(source);
     return (
-      !ignored.has(name) &&
+      (!ignored.has(name) ||
+        ((name === "ios" || name === "android") &&
+          relative(template, source).startsWith(`modules/`))) &&
       !name.startsWith(".env") &&
       !/\.(?:tsbuildinfo|p8|p12|pem|key|jks|mobileprovision)$/.test(name)
     );
@@ -95,6 +97,9 @@ delete config.expo.owner;
 delete config.expo.extra?.eas;
 delete config.expo.updates;
 writeJson(join(destination, "app.json"), config);
+const eas = readJson(join(destination, "eas.json"));
+delete eas.submit?.production?.ios?.ascAppId;
+writeJson(join(destination, "eas.json"), eas);
 writeFileSync(
   join(destination, "src/constants/app.ts"),
   `export const APP = ${JSON.stringify({ name, storagePrefix: slug }, null, 2)} as const;\n`,

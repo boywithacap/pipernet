@@ -6,6 +6,8 @@ export interface MediaDraft {
   bytes: number;
   thumbnailUri?: string;
   duration?: number;
+  /** Capture time (or the original sender's time), before processing/queueing. */
+  createdAt?: number;
 }
 
 export interface MediaItem {

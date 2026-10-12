@@ -3,18 +3,49 @@
     "appVersionSource": "remote"
   },
   "build": {
+    "development": {
+      "environment": "development",
+      "developmentClient": true,
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "development"
+    },
+    "development-simulator": {
+      "extends": "development",
+      "ios": {
+        "simulator": true
+      },
+      "channel": "development"
+    },
     "preview": {
+      "environment": "preview",
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "channel": "preview"
+    },
+    "production": {
+      "environment": "production",
+      "autoIncrement": true,
+      "distribution": "store",
+      "channel": "production"
+    },
+    "production-apk": {
+      "extends": "production",
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       }
-    },
-    "production": {
-      "autoIncrement": true,
-      "distribution": "store"
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6821802740"
+      }
+    }
   }
 }
