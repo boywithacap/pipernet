@@ -22,7 +22,7 @@ export async function requestNearbyAccess({
   await waitUntilActive?.();
   checkPermissionTask(signal);
   try {
-    // On iOS, using Nearby triggers the Bluetooth and local-network prompts.
+    // Starting the selected native adapter resolves its platform radio prompts.
     // No peer connections or media transfers are started by this check.
     await transport.start("PiperNet setup");
     checkPermissionTask(signal);

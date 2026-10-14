@@ -10,7 +10,7 @@ import {
   prepareReceivedMedia,
 } from "@/lib/media-files";
 import { MeshCoordinator } from "@/lib/mesh/coordinator";
-import { nearbyTransport } from "@/lib/mesh/transport";
+import { sharingTransport } from "@/lib/mesh/transport";
 import type { MeshSnapshot } from "@/types/mesh";
 import { mediaStore } from "./use-media";
 import { useAppActive } from "./use-app-active";
@@ -18,7 +18,7 @@ import { isAppActive } from "@/lib/app-state";
 
 export const meshCoordinator = new MeshCoordinator({
   storage: AsyncStorage,
-  transport: nearbyTransport,
+  transport: sharingTransport,
   uuid: randomUUID,
   media: {
     ready: async () => {

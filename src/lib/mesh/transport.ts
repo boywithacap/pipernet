@@ -4,7 +4,9 @@ import {
   requestForegroundPermissionsAsync,
 } from "expo-location";
 import native from "../../../modules/nearby-transport";
-import type { MeshTransport } from "../../types/mesh";
+import bleNative from "../../../modules/ble-transport";
+import { createSelectableTransport } from "./selectable-transport";
+import type { MeshTransport, MeshTransportMode } from "../../types/mesh";
 import { checkAndroidNearbyPermissions } from "../android-nearby-permissions";
 import { PermissionDeniedError } from "../permission-errors";
 import { waitForForeground } from "../app-foreground";
@@ -74,3 +76,59 @@ export const nearbyTransport: MeshTransport = {
     return () => subscription?.remove();
   },
 };
+
+async function checkBluetoothPermissions(request: boolean) {
+  requireBluetooth();
+  if (Platform.OS === "android") {
+    await checkAndroidNearbyPermissions({
+      version: Number(Platform.Version),
+      bluetoothOnly: true,
+      check: (permission) => PermissionsAndroid.check(permission),
+      request: request
+        ? (permissions) => PermissionsAndroid.requestMultiple(permissions)
+        : undefined,
+    });
+  }
+  // Core Bluetooth asks for iOS authorization when native startup creates its managers.
+}
+function requireBluetooth() {
+  if (!bleNative)
+    throw new Error(
+      "Bluetooth sharing needs a new PiperNet build. Install the latest build and retry.",
+    );
+  return bleNative;
+}
+export const bluetoothTransport: MeshTransport = {
+  available: bleNative !== null,
+  start: async (name) => {
+    await checkBluetoothPermissions(false);
+    await waitForForeground({
+      isActive: isAppActive,
+      subscribe: subscribeAppActive,
+    });
+    await requireBluetooth().start(name);
+  },
+  stop: () => bleNative?.stop() ?? Promise.resolve(),
+  connect: (peer) => requireBluetooth().connect(peer),
+  verify: (peer, accept) => requireBluetooth().verify(peer, accept),
+  disconnect: (peer) => requireBluetooth().disconnect(peer),
+  sendControl: (peer, text) => requireBluetooth().sendControl(peer, text),
+  expectFile: (peer, bytes, hash) =>
+    requireBluetooth().expectFile(peer, bytes, hash),
+  sendFile: (peer, uri, hash) => requireBluetooth().sendFile(peer, uri, hash),
+  cancelFile: (peer) => requireBluetooth().cancelFile(peer),
+  subscribe: (callback) => {
+    const subscription = bleNative?.addListener("onEvent", callback);
+    return () => subscription?.remove();
+  },
+};
+export const sharingTransport = createSelectableTransport({
+  ble: bluetoothTransport,
+  nearby: nearbyTransport,
+});
+
+export function requestSharingPermissions(mode: MeshTransportMode = "ble") {
+  return mode === "nearby"
+    ? requestNearbyPermissions()
+    : checkBluetoothPermissions(true);
+}

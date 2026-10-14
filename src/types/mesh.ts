@@ -30,7 +30,10 @@ export type TransportEvent =
     }
   | { type: "error"; message: string };
 
+export type MeshTransportMode = "ble" | "nearby";
+
 export interface MeshTransport {
+  select?: (mode: MeshTransportMode) => void;
   available: boolean;
   start: (name: string) => Promise<void>;
   stop: () => Promise<void>;
@@ -38,8 +41,8 @@ export interface MeshTransport {
   verify: (peerId: string, accept: boolean) => Promise<void>;
   disconnect: (peerId: string) => Promise<void>;
   sendControl: (peerId: string, text: string) => Promise<void>;
-  expectFile: (peerId: string, bytes: number) => Promise<void>;
-  sendFile: (peerId: string, uri: string) => Promise<void>;
+  expectFile: (peerId: string, bytes: number, hash: string) => Promise<void>;
+  sendFile: (peerId: string, uri: string, hash: string) => Promise<void>;
   cancelFile: (peerId: string) => Promise<void>;
   subscribe: (callback: (event: TransportEvent) => void) => () => void;
 }
@@ -54,6 +57,7 @@ export interface MeshRecord {
 }
 
 export interface MeshJournal {
+  transport?: MeshTransportMode;
   version: 1;
   nodeId: string;
   enabled: boolean;
@@ -69,6 +73,7 @@ export interface MeshPeer {
 }
 
 export interface MeshSnapshot {
+  transport: MeshTransportMode;
   updatedAt: number;
   status:
     "loading" | "off" | "paused" | "discovering" | "unavailable" | "error";

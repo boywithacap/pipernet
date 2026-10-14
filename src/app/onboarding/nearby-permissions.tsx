@@ -11,8 +11,8 @@ import { usePermissionAction } from "@/hooks/use-permission-action";
 import { waitForForeground } from "@/lib/app-foreground";
 import { isAppActive, subscribeAppActive } from "@/lib/app-state";
 import {
-  nearbyTransport,
-  requestNearbyPermissions,
+  sharingTransport,
+  requestSharingPermissions,
 } from "@/lib/mesh/transport";
 import { finishNearbyOnboarding } from "@/lib/nearby-onboarding";
 import { requestNearbyAccess } from "@/lib/nearby-permissions";
@@ -38,7 +38,7 @@ export default function NearbyPermissionsScreen() {
 
   function finish() {
     return run(async (signal) => {
-      const { enabled, relay } = meshCoordinator.getSnapshot();
+      const { enabled, relay, transport } = meshCoordinator.getSnapshot();
       await finishNearbyOnboarding({
         signal,
         previous: { enabled, relay },
@@ -46,8 +46,8 @@ export default function NearbyPermissionsScreen() {
         complete,
         requestAccess: () =>
           requestNearbyAccess({
-            transport: nearbyTransport,
-            requestPermissions: requestNearbyPermissions,
+            transport: sharingTransport,
+            requestPermissions: () => requestSharingPermissions(transport),
             signal,
             waitUntilActive: () =>
               waitForForeground({
@@ -105,16 +105,16 @@ export default function NearbyPermissionsScreen() {
             accessibilityRole="header"
             className="text-center text-[36px] font-normal leading-[44px] tracking-[-0.8px] ios:font-[ui-serif] android:font-[serif]"
           >
-            Nearby access
+            Bluetooth sharing
           </Text>
           <Text className="max-w-[330px] text-center text-[17px] leading-[25px] opacity-65">
-            Allow nearby access to auto-share your captures and relay received
-            media. Keep Bluetooth and Wi-Fi on.
+            Allow Bluetooth access to discover phones automatically, share your
+            captures, and relay received media. Wi-Fi is optional.
           </Text>
           <Text className="max-w-[330px] text-center text-sm leading-5 text-muted-foreground">
-            Nearby PiperNet phones connect automatically and can keep shared
-            media. Location access is used for nearby Wi-Fi, never to collect
-            your location.
+            Keep PiperNet open on participating phones. They can view and keep
+            shared media. Older Android versions also need location access for
+            Bluetooth discovery; PiperNet never collects your location.
           </Text>
         </OnboardingCopy>
       </OnboardingFrame>

@@ -19,16 +19,35 @@ export function androidNearbyPermissions(version: number): Permission[] {
   return permissions;
 }
 
+export function androidBluetoothPermissions(version: number): Permission[] {
+  if (version >= 31)
+    return [
+      "android.permission.BLUETOOTH_ADVERTISE",
+      "android.permission.BLUETOOTH_CONNECT",
+      "android.permission.BLUETOOTH_SCAN",
+    ];
+  return version >= 29
+    ? [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+      ]
+    : ["android.permission.ACCESS_COARSE_LOCATION"];
+}
+
 export async function checkAndroidNearbyPermissions({
   version,
+  bluetoothOnly = false,
   check,
   request,
 }: {
   version: number;
+  bluetoothOnly?: boolean;
   check: (permission: Permission) => Promise<boolean>;
   request?: (permissions: Permission[]) => Promise<Record<string, string>>;
 }) {
-  const permissions = androidNearbyPermissions(version);
+  const permissions = bluetoothOnly
+    ? androidBluetoothPermissions(version)
+    : androidNearbyPermissions(version);
   const granted = await Promise.all(permissions.map(check));
   const missing = permissions.filter((_, index) => !granted[index]);
   if (!missing.length) return;

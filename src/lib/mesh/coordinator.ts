@@ -5,6 +5,7 @@ import type {
   MeshJournal,
   MeshPeer,
   MeshSnapshot,
+  MeshTransportMode,
   TransportEvent,
 } from "../../types/mesh";
 import type { MediaDraft } from "../../types/media";
@@ -71,6 +72,7 @@ export class MeshCoordinator {
   private unsubscribe?: () => void;
   private snapshot: MeshSnapshot = {
     updatedAt: 0,
+    transport: "ble",
     status: "loading",
     enabled: false,
     relay: false,
@@ -94,6 +96,7 @@ export class MeshCoordinator {
     if (error) this.lastError = error;
     this.snapshot = {
       updatedAt: this.now(),
+      transport: this.journal?.transport ?? "ble",
       status: !this.deps.transport.available
         ? "unavailable"
         : this.lastError
@@ -162,6 +165,9 @@ export class MeshCoordinator {
           !nodePattern.test(j.nodeId) ||
           typeof j.enabled !== "boolean" ||
           typeof j.relay !== "boolean" ||
+          (j.transport !== undefined &&
+            j.transport !== "ble" &&
+            j.transport !== "nearby") ||
           !Array.isArray(j.records) ||
           j.records.length > MESH_LIMITS.records ||
           !Array.isArray(j.seen) ||
@@ -200,6 +206,7 @@ export class MeshCoordinator {
           throw new Error("Invalid mesh receipts.");
         this.journal = j;
       }
+      this.deps.transport.select?.(this.journal!.transport ?? "ble");
       this.unsubscribe = this.deps.transport.subscribe((event) => {
         void this.serial(() => this.event(event)).catch(() => undefined);
       });
@@ -215,12 +222,19 @@ export class MeshCoordinator {
       });
     return this.initialization;
   }
-  configure(options: { enabled?: boolean; relay?: boolean }) {
+  configure(options: {
+    enabled?: boolean;
+    relay?: boolean;
+    transport?: MeshTransportMode;
+  }) {
     return this.serial(async () => {
       await this.initialize();
       this.lastError = undefined;
+      const modeChanged =
+        options.transport !== undefined &&
+        options.transport !== (this.journal!.transport ?? "ble");
       await this.commit({ ...this.journal!, ...options });
-      if (options.enabled === true && this.running) {
+      if ((options.enabled === true || modeChanged) && this.running) {
         // An explicit Retry restarts radio discovery after permissions or radios change.
         await this.deps.transport.stop();
         this.running = false;
@@ -231,6 +245,8 @@ export class MeshCoordinator {
         this.outgoing = undefined;
         this.incoming = undefined;
       }
+      if (modeChanged)
+        this.deps.transport.select?.(this.journal!.transport ?? "ble");
       if (
         options.relay === false &&
         this.outgoing &&
@@ -842,7 +858,7 @@ export class MeshCoordinator {
         await this.send(peerId, { v: 1, type: "busy", id: envelope.id });
         return;
       }
-      await this.deps.transport.expectFile(peerId, envelope.bytes);
+      await this.deps.transport.expectFile(peerId, envelope.bytes, envelope.id);
       session.received += envelope.bytes;
       session.have.add(envelope.id);
       this.incoming = {
@@ -877,7 +893,11 @@ export class MeshCoordinator {
       }
       this.outgoing.attempts = 1;
       session.sent += this.outgoing.envelope.bytes;
-      await this.deps.transport.sendFile(peerId, this.deps.media.uri(item));
+      await this.deps.transport.sendFile(
+        peerId,
+        this.deps.media.uri(item),
+        this.outgoing.envelope.id,
+      );
       return;
     }
     if (frame.type === "receipt") {

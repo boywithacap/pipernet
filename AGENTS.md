@@ -42,8 +42,14 @@ Run lint and typecheck before declaring any task done.
 Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
 Docs: https://docs.expo.dev/eas/index.md
 
+### Physical-device testing
+
+- Default to standalone tester releases: `bun run build:testflight` for iOS (production build with automatic TestFlight submission) and `bun run build:android-release` for Android (signed release APK for direct installation).
+- These builds embed the JavaScript bundle and run without Metro. Use them for Bluetooth/mesh acceptance tests on physical phones.
+- Only build development clients or simulator builds when explicitly requested for debugging. Native changes require a new tester binary; compatible JavaScript/assets can use the existing EAS Update workflow.
+
 ## Rules
 
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
-- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
+- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a new native build; use the standalone tester release commands above by default.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md

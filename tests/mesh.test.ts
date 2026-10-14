@@ -28,6 +28,7 @@ const envelope: MeshEnvelope = {
 };
 
 class Transport implements MeshTransport {
+  select?: MeshTransport["select"];
   available = true;
   running = false;
   listeners = new Set<(event: TransportEvent) => void>();
@@ -977,4 +978,32 @@ test("admission rejects full tombstone journals without evicting deletion protec
     JSON.parse(full.data.get(MESH_STORAGE_KEY)!).seen.length,
     MESH_LIMITS.tombstones,
   );
+});
+
+test("transport changes persist the queue and receipts, stop old links, and restore the selected mode", async () => {
+  const a = node(1),
+    b = node(2);
+  const selected: string[] = [];
+  a.transport.select = (mode) => {
+    assert.equal(a.transport.running, false);
+    selected.push(mode);
+  };
+  capture(a);
+  await start(a);
+  await start(b);
+  link(a, b);
+  await settle(a, b);
+  const before = a.engine.getSnapshot().records;
+  await a.engine.configure({ transport: "nearby" });
+  assert.deepEqual(selected, ["ble", "nearby"]);
+  assert.equal(a.engine.getSnapshot().transport, "nearby");
+  assert.deepEqual(a.engine.getSnapshot().records, before);
+  assert.equal(a.engine.getSnapshot().peers.length, 0);
+  await a.engine.dispose();
+  const restarted = node(1, a);
+  const restored: string[] = [];
+  restarted.transport.select = (mode) => restored.push(mode);
+  await start(restarted);
+  assert.deepEqual(restored, ["nearby"]);
+  assert.deepEqual(restarted.engine.getSnapshot().records, before);
 });
