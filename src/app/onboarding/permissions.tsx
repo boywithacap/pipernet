@@ -83,7 +83,7 @@ export default function PermissionsScreen() {
           "Camera access is required to capture. Allow access to continue.",
           access.camera?.canAskAgain ?? true,
         );
-      router.navigate("/onboarding/nearby-permissions");
+      router.navigate("/onboarding/bluetooth-permissions");
     });
   }
 

@@ -14,11 +14,11 @@ import {
   sharingTransport,
   requestSharingPermissions,
 } from "@/lib/mesh/transport";
-import { finishNearbyOnboarding } from "@/lib/nearby-onboarding";
-import { requestNearbyAccess } from "@/lib/nearby-permissions";
+import { finishSharingOnboarding } from "@/lib/sharing-onboarding";
+import { requestSharingAccess } from "@/lib/sharing-permissions";
 import { permissionErrorMessage } from "@/lib/permission-errors";
 
-export default function NearbyPermissionsScreen() {
+export default function BluetoothPermissionsScreen() {
   const complete = useOnboarding((state) => state.complete);
   const { busy, error, run, cancel } = usePermissionAction();
   const action = error ? "Try again" : "Enable sharing";
@@ -38,16 +38,16 @@ export default function NearbyPermissionsScreen() {
 
   function finish() {
     return run(async (signal) => {
-      const { enabled, relay, transport } = meshCoordinator.getSnapshot();
-      await finishNearbyOnboarding({
+      const { enabled, relay } = meshCoordinator.getSnapshot();
+      await finishSharingOnboarding({
         signal,
         previous: { enabled, relay },
         configure: (options) => meshCoordinator.configure(options),
         complete,
         requestAccess: () =>
-          requestNearbyAccess({
+          requestSharingAccess({
             transport: sharingTransport,
-            requestPermissions: () => requestSharingPermissions(transport),
+            requestPermissions: () => requestSharingPermissions(),
             signal,
             waitUntilActive: () =>
               waitForForeground({
@@ -109,7 +109,8 @@ export default function NearbyPermissionsScreen() {
           </Text>
           <Text className="max-w-[330px] text-center text-[17px] leading-[25px] opacity-65">
             Allow Bluetooth access to discover phones automatically, share your
-            captures, and relay received media. Wi-Fi is optional.
+            captures, and relay received media. Internet and Wi-Fi aren’t
+            needed.
           </Text>
           <Text className="max-w-[330px] text-center text-sm leading-5 text-muted-foreground">
             Keep PiperNet open on participating phones. They can view and keep

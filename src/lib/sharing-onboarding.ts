@@ -2,7 +2,7 @@ import { checkPermissionTask } from "./permission-errors";
 
 type SharingOptions = { enabled: boolean; relay: boolean };
 
-export async function finishNearbyOnboarding({
+export async function finishSharingOnboarding({
   requestAccess,
   configure,
   previous,

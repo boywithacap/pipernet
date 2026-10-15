@@ -132,7 +132,7 @@ mock.module(
 );
 mock.module(
   fileURLToPath(
-    new URL("../modules/nearby-transport/index.ts", import.meta.url),
+    new URL("../modules/media-inspector/index.ts", import.meta.url),
   ),
   () => ({
     default: {

@@ -2,7 +2,7 @@ import { Directory, File, Paths } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import { createVideoPlayer } from "expo-video";
 import { randomUUID } from "expo-crypto";
-import native from "../../modules/nearby-transport";
+import native from "../../modules/media-inspector";
 import mediaStamp from "../../modules/media-stamp";
 import type { MeshEnvelope } from "@/types/mesh";
 import type { MediaDraft, MediaFiles, MediaItem } from "@/types/media";
@@ -95,7 +95,7 @@ export async function prepareVideo(
   createdAt = Date.now(),
 ): Promise<MediaDraft> {
   if (!native)
-    throw new Error("Video compression needs a PiperNet development build.");
+    throw new Error("Video compression needs an updated PiperNet app.");
   if (!mediaStamp?.stampVideo)
     throw new Error(
       "Video timestamps need an updated PiperNet development build.",
@@ -190,10 +190,11 @@ export async function prepareReceivedMedia(
   uri: string,
   envelope: MeshEnvelope,
 ): Promise<MediaDraft> {
-  if (!native) throw new Error("Offline sharing needs a development build.");
+  if (!native)
+    throw new Error("Media processing needs an updated PiperNet app.");
   let adopted: File | undefined;
   try {
-    // Nearby delivers opaque .bin files. AVFoundation needs a video extension
+    // Legacy transfers may contain opaque .bin files. AVFoundation needs a video extension
     // even for valid MP4 bytes; the native inspector still validates their format.
     const source = new File(uri);
     if (

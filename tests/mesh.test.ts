@@ -28,7 +28,6 @@ const envelope: MeshEnvelope = {
 };
 
 class Transport implements MeshTransport {
-  select?: MeshTransport["select"];
   available = true;
   running = false;
   listeners = new Set<(event: TransportEvent) => void>();
@@ -980,30 +979,51 @@ test("admission rejects full tombstone journals without evicting deletion protec
   );
 });
 
-test("transport changes persist the queue and receipts, stop old links, and restore the selected mode", async () => {
-  const a = node(1),
-    b = node(2);
-  const selected: string[] = [];
-  a.transport.select = (mode) => {
-    assert.equal(a.transport.running, false);
-    selected.push(mode);
+test("legacy transport settings migrate without losing sharing preferences, media, receipts or tombstones", async () => {
+  for (const legacy of ["nearby", "ble", undefined]) {
+    const a = node(1),
+      b = node(2);
+    capture(a);
+    await start(a, true);
+    await start(b);
+    link(a, b);
+    await settle(a, b);
+    await a.engine.dispose();
+    const previous = JSON.parse(a.data.get(MESH_STORAGE_KEY)!);
+    previous.transport = legacy;
+    previous.futureMetadata = { keep: true };
+    a.data.set(MESH_STORAGE_KEY, JSON.stringify(previous));
+    const restarted = node(1, a);
+    await restarted.engine.initialize();
+    const migrated = JSON.parse(a.data.get(MESH_STORAGE_KEY)!);
+    assert.equal(migrated.transport, undefined);
+    const { transport: ignored, ...expected } = previous;
+    assert.deepEqual(migrated, expected);
+    assert.equal(restarted.engine.getSnapshot().enabled, true);
+    assert.equal(restarted.engine.getSnapshot().relay, true);
+    assert.deepEqual(restarted.items, a.items);
+    assert.ok(migrated.records[0].deliveredTo.length > 0);
+    assert.ok(migrated.seen.length > 0);
+    await restarted.engine.setActive(true);
+    assert.equal(restarted.transport.running, true);
+    await restarted.engine.dispose();
+  }
+});
+
+test("a failed transport migration keeps the saved journal intact for retry", async () => {
+  const a = node(1);
+  await a.engine.initialize();
+  const legacy = {
+    ...JSON.parse(a.data.get(MESH_STORAGE_KEY)!),
+    transport: "nearby",
   };
-  capture(a);
-  await start(a);
-  await start(b);
-  link(a, b);
-  await settle(a, b);
-  const before = a.engine.getSnapshot().records;
-  await a.engine.configure({ transport: "nearby" });
-  assert.deepEqual(selected, ["ble", "nearby"]);
-  assert.equal(a.engine.getSnapshot().transport, "nearby");
-  assert.deepEqual(a.engine.getSnapshot().records, before);
-  assert.equal(a.engine.getSnapshot().peers.length, 0);
-  await a.engine.dispose();
+  a.data.set(MESH_STORAGE_KEY, JSON.stringify(legacy));
   const restarted = node(1, a);
-  const restored: string[] = [];
-  restarted.transport.select = (mode) => restored.push(mode);
-  await start(restarted);
-  assert.deepEqual(restored, ["nearby"]);
-  assert.deepEqual(restarted.engine.getSnapshot().records, before);
+  restarted.failWrite(true);
+  await assert.rejects(restarted.engine.initialize(), /Disk full/);
+  assert.deepEqual(JSON.parse(a.data.get(MESH_STORAGE_KEY)!), legacy);
+  assert.equal(restarted.transport.running, false);
+  restarted.failWrite(false);
+  await restarted.engine.initialize();
+  assert.equal(JSON.parse(a.data.get(MESH_STORAGE_KEY)!).transport, undefined);
 });

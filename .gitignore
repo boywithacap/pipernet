@@ -2,6 +2,7 @@ node_modules/
 .expo/
 dist/
 web-build/
+marketing/
 expo-env.d.ts
 /ios/
 /android/

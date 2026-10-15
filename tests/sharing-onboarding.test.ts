@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { finishNearbyOnboarding } from "../src/lib/nearby-onboarding";
+import { finishSharingOnboarding } from "../src/lib/sharing-onboarding";
 
 test("onboarding enables both sharing options only after access, before marking completion", async () => {
   const calls: unknown[] = [];
-  await finishNearbyOnboarding({
+  await finishSharingOnboarding({
     requestAccess: async () => {
       calls.push("access");
     },
@@ -28,7 +28,7 @@ test("denied access cannot enable sharing or bypass onboarding", async () => {
     throw new Error("Must not run");
   };
   await assert.rejects(
-    finishNearbyOnboarding({
+    finishSharingOnboarding({
       requestAccess: async () => {
         throw new Error("Access denied");
       },
@@ -43,7 +43,7 @@ test("denied access cannot enable sharing or bypass onboarding", async () => {
 test("failed onboarding persistence rolls back both settings and remains retryable", async () => {
   const options: unknown[] = [];
   await assert.rejects(
-    finishNearbyOnboarding({
+    finishSharingOnboarding({
       requestAccess: async () => {},
       configure: async (value) => {
         options.push(value);
@@ -65,7 +65,7 @@ test("cancellation while saving options rolls back instead of finishing a depart
   const controller = new AbortController();
   const options: unknown[] = [];
   await assert.rejects(
-    finishNearbyOnboarding({
+    finishSharingOnboarding({
       signal: controller.signal,
       requestAccess: async () => {},
       configure: async (value) => {
@@ -87,7 +87,7 @@ test("cancellation while saving options rolls back instead of finishing a depart
 
 test("failed settings persistence does not complete onboarding", async () => {
   await assert.rejects(
-    finishNearbyOnboarding({
+    finishSharingOnboarding({
       requestAccess: async () => {},
       configure: async () => {
         throw new Error("Settings failed");

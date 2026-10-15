@@ -30,10 +30,7 @@ export type TransportEvent =
     }
   | { type: "error"; message: string };
 
-export type MeshTransportMode = "ble" | "nearby";
-
 export interface MeshTransport {
-  select?: (mode: MeshTransportMode) => void;
   available: boolean;
   start: (name: string) => Promise<void>;
   stop: () => Promise<void>;
@@ -57,7 +54,6 @@ export interface MeshRecord {
 }
 
 export interface MeshJournal {
-  transport?: MeshTransportMode;
   version: 1;
   nodeId: string;
   enabled: boolean;
@@ -73,7 +69,6 @@ export interface MeshPeer {
 }
 
 export interface MeshSnapshot {
-  transport: MeshTransportMode;
   updatedAt: number;
   status:
     "loading" | "off" | "paused" | "discovering" | "unavailable" | "error";

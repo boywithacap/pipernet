@@ -4,6 +4,7 @@ import {
   Alert,
   FlatList,
   Image,
+  Linking,
   Modal,
   Platform,
   Pressable,
@@ -29,6 +30,10 @@ import { useTheme } from "@/hooks/use-theme";
 import { mediaUri, thumbnailUri } from "@/lib/media-files";
 import { formatBytes, formatDuration } from "@/lib/media-policy";
 import { formatCaptureDateTime } from "@/lib/capture-time";
+import {
+  PhotoLibraryPermissionError,
+  saveToPhotoLibrary,
+} from "@/lib/photo-library";
 import type { MediaItem } from "@/types/media";
 import { MESH_LIMITS } from "@/lib/mesh/protocol";
 
@@ -59,101 +64,113 @@ export default function InboxScreen() {
   }
 
   return (
-    <TabScreen>
+    <TabScreen scrollsBehindTabs>
       <View
+        collapsable={false}
         className="flex-1 w-full max-w-[800px] self-center"
         onLayout={(event) => setContentWidth(event.nativeEvent.layout.width)}
       >
-        <View className="flex-row items-center justify-between px-5 py-3">
-          <Text
-            accessibilityRole="header"
-            className="text-2xl font-semibold tracking-[-0.8px]"
-          >
-            Inbox
-          </Text>
-          <Button
-            variant="plain"
-            size="icon"
-            accessibilityLabel="Open settings"
-            onPress={() => router.navigate("/settings")}
-          >
-            <Icon name="settings" size={23} color={theme.foreground} />
-          </Button>
-        </View>
-        <View className="px-4 pb-4 pt-2">
-          <SegmentedControl
-            value={filter}
-            options={[
-              { value: "received", label: "Received" },
-              {
-                value: "outgoing",
-                label: queued ? `Queued (${queued})` : "Queued",
-              },
-            ]}
-            onChange={(value) =>
-              router.setParams({
-                view: value === "outgoing" ? "queued" : "received",
-              })
-            }
-          />
-        </View>
-        {status === "loading" || status === "idle" ? (
-          <View className="flex-1 items-center justify-center px-6 pb-16">
-            <ActivityIndicator
-              color={theme.foreground}
-              accessibilityLabel="Loading media"
-            />
-          </View>
-        ) : status === "error" ? (
-          <View className="flex-1 items-center justify-center px-6 pb-16">
-            <StateIllustration kind="inbox" />
-            <Text
-              accessibilityRole="alert"
-              className="my-5 text-lg font-medium"
-            >
-              Couldn’t open your library
-            </Text>
-            <Button onPress={() => void hydrate()}>Try again</Button>
-          </View>
-        ) : visibleItems.length === 0 ? (
-          <View className="flex-1 items-center justify-center px-6 pb-16">
-            <View className="mb-5">
-              <StateIllustration
-                kind={filter === "received" ? "inbox" : "capture"}
-              />
+        <FlatList
+          key={columns}
+          className="flex-1"
+          data={status === "ready" ? visibleItems : []}
+          numColumns={columns}
+          keyExtractor={(item) => item.id}
+          contentInsetAdjustmentBehavior={
+            Platform.OS === "ios" ? "automatic" : "never"
+          }
+          showsVerticalScrollIndicator={false}
+          contentContainerClassName="px-4 pb-6"
+          contentContainerStyle={{ flexGrow: 1 }}
+          columnWrapperClassName="gap-3"
+          stickyHeaderIndices={[0]}
+          ListHeaderComponentStyle={{ marginHorizontal: -16 }}
+          ListHeaderComponent={
+            <View className="bg-background">
+              <View className="flex-row items-center justify-between px-5 py-3">
+                <Text
+                  accessibilityRole="header"
+                  className="text-2xl font-semibold tracking-[-0.8px]"
+                >
+                  Inbox
+                </Text>
+                <Button
+                  variant="plain"
+                  size="icon"
+                  accessibilityLabel="Open settings"
+                  onPress={() => router.navigate("/settings")}
+                >
+                  <Icon name="settings" size={23} color={theme.foreground} />
+                </Button>
+              </View>
+              <View className="px-4 pb-4 pt-2">
+                <SegmentedControl
+                  value={filter}
+                  options={[
+                    { value: "received", label: "Received" },
+                    {
+                      value: "outgoing",
+                      label: queued ? `Queued (${queued})` : "Queued",
+                    },
+                  ]}
+                  onChange={(value) =>
+                    router.setParams({
+                      view: value === "outgoing" ? "queued" : "received",
+                    })
+                  }
+                />
+              </View>
             </View>
-            <Text className="text-lg font-medium">
-              {filter === "received" ? "Inbox empty" : "Queue empty"}
-            </Text>
-            <Button
-              variant="surface"
-              containerClassName="mt-6"
-              onPress={() => router.navigate("/(tabs)")}
-            >
-              Record
-            </Button>
-          </View>
-        ) : (
-          <FlatList
-            key={columns}
-            data={visibleItems}
-            numColumns={columns}
-            keyExtractor={(item) => item.id}
-            contentInsetAdjustmentBehavior="never"
-            showsVerticalScrollIndicator={false}
-            contentContainerClassName="px-4 pt-0.5 pb-6"
-            columnWrapperClassName="gap-3"
-            initialNumToRender={12}
-            windowSize={5}
-            renderItem={({ item }) => (
-              <MomentTile
-                item={item}
-                width={tileWidth}
-                onPress={() => open(item)}
-              />
-            )}
-          />
-        )}
+          }
+          ListEmptyComponent={
+            status === "loading" || status === "idle" ? (
+              <View className="flex-1 items-center justify-center px-6 pb-16">
+                <ActivityIndicator
+                  color={theme.foreground}
+                  accessibilityLabel="Loading media"
+                />
+              </View>
+            ) : status === "error" ? (
+              <View className="flex-1 items-center justify-center px-6 pb-16">
+                <StateIllustration kind="inbox" />
+                <Text
+                  accessibilityRole="alert"
+                  className="my-5 text-lg font-medium"
+                >
+                  Couldn’t open your library
+                </Text>
+                <Button onPress={() => void hydrate()}>Try again</Button>
+              </View>
+            ) : (
+              <View className="flex-1 items-center justify-center px-6 pb-16">
+                <View className="mb-5">
+                  <StateIllustration
+                    kind={filter === "received" ? "inbox" : "capture"}
+                  />
+                </View>
+                <Text className="text-lg font-medium">
+                  {filter === "received" ? "Inbox empty" : "Queue empty"}
+                </Text>
+                <Button
+                  variant="surface"
+                  containerClassName="mt-6"
+                  onPress={() => router.navigate("/(tabs)")}
+                >
+                  Record
+                </Button>
+              </View>
+            )
+          }
+          initialNumToRender={12}
+          windowSize={5}
+          renderItem={({ item }) => (
+            <MomentTile
+              item={item}
+              width={tileWidth}
+              onPress={() => open(item)}
+            />
+          )}
+        />
       </View>
       <Modal
         visible={selected !== null}
@@ -264,14 +281,18 @@ function MomentViewer({
   const theme = useTheme();
   const remove = useMedia((state) => state.remove);
   const [deleting, setDeleting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [needsPhotoSettings, setNeedsPhotoSettings] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const mounted = useRef(true);
   const deletePending = useRef(false);
+  const savePending = useRef(false);
   const confirmationPending = useRef(false);
   const title = `Delete ${item.kind}?`;
-  const message =
-    "This removes it from this phone. Copies already shared stay on other phones.";
+  const libraryName = Platform.OS === "ios" ? "Photos" : "Gallery";
+  const message = `This removes it from PiperNet. Copies saved to ${libraryName} or shared with others stay there.`;
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -288,6 +309,7 @@ function MomentViewer({
     if (
       !mounted.current ||
       deletePending.current ||
+      savePending.current ||
       confirmationPending.current
     )
       return;
@@ -308,6 +330,7 @@ function MomentViewer({
     if (
       !mounted.current ||
       !confirmationPending.current ||
+      savePending.current ||
       deletePending.current
     )
       return;
@@ -316,6 +339,7 @@ function MomentViewer({
     setConfirming(false);
     setDeleting(true);
     setError(null);
+    setNeedsPhotoSettings(false);
     try {
       await remove(item.id);
       if (mounted.current) onClose();
@@ -329,6 +353,38 @@ function MomentViewer({
     }
   }
 
+  async function saveMoment() {
+    if (
+      !mounted.current ||
+      saved ||
+      savePending.current ||
+      deletePending.current ||
+      confirmationPending.current
+    )
+      return;
+    savePending.current = true;
+    setSaving(true);
+    setError(null);
+    setNeedsPhotoSettings(false);
+    try {
+      await saveToPhotoLibrary(mediaUri(item));
+      if (mounted.current) setSaved(true);
+    } catch (error) {
+      if (mounted.current) {
+        const denied = error instanceof PhotoLibraryPermissionError;
+        setNeedsPhotoSettings(denied && !error.canAskAgain);
+        setError(
+          denied
+            ? `Allow PiperNet to save to ${libraryName}${error.canAskAgain ? ", then try again." : " in your phone’s settings."}`
+            : `Couldn’t save to ${libraryName}. Check available storage and try again.`,
+        );
+      }
+    } finally {
+      savePending.current = false;
+      if (mounted.current) setSaving(false);
+    }
+  }
+
   return (
     <Screen
       edges={["top", "bottom", "left", "right"]}
@@ -339,7 +395,7 @@ function MomentViewer({
           variant="surface"
           size="icon"
           accessibilityLabel="Close preview"
-          disabled={deleting}
+          disabled={deleting || saving}
           onPress={onClose}
         >
           <Icon name="x" size={22} color={theme.foreground} />
@@ -372,15 +428,53 @@ function MomentViewer({
             {error}
           </Text>
         ) : null}
-        <Button
-          variant="destructive"
-          loading={deleting}
-          onPress={confirmDelete}
-          accessibilityLabel="Delete media from device"
-        >
-          <Icon name="trash-2" size={17} color={theme.destructiveForeground} />
-          Delete
-        </Button>
+        {needsPhotoSettings ? (
+          <Button
+            variant="surface"
+            onPress={() =>
+              void Linking.openSettings().catch(() => {
+                if (mounted.current) {
+                  setError(
+                    "Open your phone’s settings to allow saving photos and videos.",
+                  );
+                }
+              })
+            }
+          >
+            Open settings
+          </Button>
+        ) : null}
+        <View className="flex-row items-center gap-3">
+          <Button
+            containerClassName="flex-1"
+            loading={saving}
+            disabled={deleting || confirming || saved}
+            onPress={() => void saveMoment()}
+            accessibilityLabel={`${saved ? "Saved" : "Save"} to ${libraryName}`}
+            accessibilityState={{ busy: saving }}
+          >
+            <Icon
+              name={saved ? "check" : "download"}
+              size={18}
+              color={theme.primaryForeground}
+            />
+            {`${saved ? "Saved" : "Save"} to ${libraryName}`}
+          </Button>
+          <Button
+            variant="destructive"
+            size="icon"
+            loading={deleting}
+            disabled={saving}
+            onPress={confirmDelete}
+            accessibilityLabel="Delete media from PiperNet"
+          >
+            <Icon
+              name="trash-2"
+              size={17}
+              color={theme.destructiveForeground}
+            />
+          </Button>
+        </View>
       </View>
       {Platform.OS !== "ios" ? (
         <ConfirmationDialog

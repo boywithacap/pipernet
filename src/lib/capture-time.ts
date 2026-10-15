@@ -1,4 +1,19 @@
-/** Freeze local wall time and its UTC offset into the media itself. */
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
+
+/** Freeze a compact, readable local date and 12-hour time into the pixels. */
 export function formatCaptureStamp(createdAt: number) {
   const date = new Date(createdAt);
   if (
@@ -8,9 +23,8 @@ export function formatCaptureStamp(createdAt: number) {
   )
     throw new Error("Invalid capture time.");
   const pad = (value: number) => String(value).padStart(2, "0");
-  const offset = -date.getTimezoneOffset();
-  const zone = `${offset >= 0 ? "+" : "-"}${pad(Math.floor(Math.abs(offset) / 60))}:${pad(Math.abs(offset) % 60)}`;
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}\n${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())} ${zone}`;
+  const hour = date.getHours();
+  return `${date.getDate()} ${MONTHS[date.getMonth()]} ${date.getFullYear()}\n${hour % 12 || 12}:${pad(date.getMinutes())} ${hour < 12 ? "AM" : "PM"}`;
 }
 
 export function formatCaptureDateTime(createdAt: number) {
@@ -21,5 +35,6 @@ export function formatCaptureDateTime(createdAt: number) {
     hour: "numeric",
     minute: "2-digit",
     second: "2-digit",
+    hour12: true,
   });
 }

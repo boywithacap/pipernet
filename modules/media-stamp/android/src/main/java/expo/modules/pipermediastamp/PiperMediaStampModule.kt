@@ -5,7 +5,6 @@ import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.RectF
 import android.graphics.Typeface
 import android.media.MediaMetadataRetriever
 import android.net.Uri
@@ -16,6 +15,7 @@ import androidx.media3.common.MimeTypes
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.BitmapOverlay
 import androidx.media3.effect.OverlayEffect
+import androidx.media3.effect.Presentation
 import androidx.media3.transformer.Composition
 import androidx.media3.transformer.DefaultEncoderFactory
 import androidx.media3.transformer.EditedMediaItem
@@ -70,8 +70,7 @@ class PiperMediaStampModule : Module() {
         validateText(text)
         val source = ownedFile(uri)
         val metadata = MediaMetadataRetriever()
-        val width: Int
-        val height: Int
+        val size: CaptureVideoSize
         try {
           metadata.setDataSource(source.path)
           val w = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 0
@@ -79,12 +78,10 @@ class PiperMediaStampModule : Module() {
           val rotation = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
           val duration = metadata.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toLongOrNull() ?: 0
           require(duration in 1..60_500) { "Record a video of 60 seconds or less." }
-          width = if (rotation == 90 || rotation == 270) h else w
-          height = if (rotation == 90 || rotation == 270) w else h
+          size = captureVideoSize(w, h, rotation)
         } finally { metadata.release() }
-        validateSize(width, height)
-        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-        drawStamp(Canvas(bitmap), text, width, height)
+        val bitmap = Bitmap.createBitmap(size.width, size.height, Bitmap.Config.ARGB_8888)
+        drawStamp(Canvas(bitmap), text, size.width, size.height)
         main.post { startExport(source, bitmap, promise) }
       } catch (error: Throwable) { promise.reject("ERR_MEDIA_STAMP", error.message, error) }
     }
@@ -130,18 +127,24 @@ class PiperMediaStampModule : Module() {
     val edge = min(width, height).toFloat()
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
       color = Color.WHITE
-      typeface = Typeface.create(Typeface.MONOSPACE, Typeface.NORMAL)
-      textSize = max(10f, edge * 0.055f)
+      typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+      textSize = max(9f, edge * 0.035f)
+      setShadowLayer(max(1f, edge * 0.003f), 0f, 1f, Color.BLACK)
     }
     val lines = text.split('\n')
-    val padding = max(4f, edge * 0.02f)
-    val margin = padding * 1.5f
+    val margin = max(6f, edge * 0.03f)
     val lineHeight = paint.fontSpacing
-    val rect = RectF(margin, height - lineHeight * 2 - padding * 2 - margin,
-      margin + lines.maxOf { paint.measureText(it) } + padding * 2, height - margin)
-    canvas.drawRoundRect(rect, padding, padding, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(166, 0, 0, 0) })
+    val baseline = height - margin - paint.fontMetrics.descent - (lines.size - 1) * lineHeight
+    val outline = Paint(paint).apply {
+      color = Color.argb(210, 0, 0, 0)
+      style = Paint.Style.STROKE
+      strokeWidth = max(1f, edge * 0.0025f)
+      strokeJoin = Paint.Join.ROUND
+    }
     lines.forEachIndexed { index, line ->
-      canvas.drawText(line, rect.left + padding, rect.top + padding - paint.fontMetrics.ascent + index * lineHeight, paint)
+      val y = baseline + index * lineHeight
+      canvas.drawText(line, margin, y, outline)
+      canvas.drawText(line, margin, y, paint)
     }
   }
 
@@ -153,7 +156,11 @@ class PiperMediaStampModule : Module() {
       val destination = outputFile("mp4")
       output = destination
       val item = EditedMediaItem.Builder(MediaItem.fromUri(Uri.fromFile(source)))
-        .setEffects(Effects(emptyList(), listOf(OverlayEffect(listOf(BitmapOverlay.createStaticBitmapOverlay(bitmap))))))
+        .setEffects(Effects(emptyList(), listOf(
+          // Resize the displayed video before applying the same-sized overlay.
+          Presentation.createForWidthAndHeight(bitmap.width, bitmap.height, Presentation.LAYOUT_SCALE_TO_FIT),
+          OverlayEffect(listOf(BitmapOverlay.createStaticBitmapOverlay(bitmap))),
+        )))
         .build()
       val encoder = DefaultEncoderFactory.Builder(context)
         .setRequestedVideoEncoderSettings(VideoEncoderSettings.Builder().setBitrate(800_000).build())

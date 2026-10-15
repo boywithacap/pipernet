@@ -2,7 +2,7 @@ import type { MeshTransport } from "../types/mesh";
 import { checkPermissionTask } from "./permission-errors";
 
 /** Resolve native prompts during onboarding without enabling auto-sharing. */
-export async function requestNearbyAccess({
+export async function requestSharingAccess({
   transport,
   requestPermissions,
   waitUntilActive,
@@ -15,14 +15,14 @@ export async function requestNearbyAccess({
 }) {
   checkPermissionTask(signal);
   if (!transport.available)
-    throw new Error("Nearby sharing needs a PiperNet development build.");
+    throw new Error("Bluetooth sharing needs an updated PiperNet app.");
   await requestPermissions();
   checkPermissionTask(signal);
   // Android may resolve its permission promise before the permission activity closes.
   await waitUntilActive?.();
   checkPermissionTask(signal);
   try {
-    // Starting the selected native adapter resolves its platform radio prompts.
+    // Starting Bluetooth resolves its platform radio prompts.
     // No peer connections or media transfers are started by this check.
     await transport.start("PiperNet setup");
     checkPermissionTask(signal);

@@ -3,17 +3,13 @@ plugins {
   id 'expo-module-gradle-plugin'
 }
 
-group = 'expo.modules.pipernearby'
+group = 'expo.modules.pipermediainspector'
 version = '1.0.0'
 
 android {
-  namespace 'expo.modules.pipernearby'
+  namespace 'expo.modules.pipermediainspector'
   defaultConfig {
     versionCode 1
     versionName project.version.toString()
   }
-}
-
-dependencies {
-  implementation 'com.google.android.gms:play-services-nearby:19.3.0'
 }

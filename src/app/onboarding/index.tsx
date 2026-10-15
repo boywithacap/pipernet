@@ -4,7 +4,7 @@ import { StateIllustration } from "@/components/state-illustration";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 
-export default function NearbySharingScreen() {
+export default function BluetoothSharingScreen() {
   return (
     <OnboardingFrame
       footer={
@@ -24,11 +24,11 @@ export default function NearbySharingScreen() {
           accessibilityRole="header"
           className="text-center text-[36px] font-normal leading-[44px] tracking-[-0.8px] ios:font-[ui-serif] android:font-[serif]"
         >
-          Nearby sharing
+          Bluetooth sharing
         </Text>
         <Text className="max-w-[330px] text-center text-[17px] leading-[25px] opacity-65">
-          Share photos and videos with nearby phones, without internet.
-          Connected phones can view and keep what you share.
+          Share photos and videos with nearby phones, over Bluetooth, without
+          internet or Wi-Fi. Connected phones can view and keep what you share.
         </Text>
       </OnboardingCopy>
     </OnboardingFrame>

@@ -163,7 +163,7 @@ PiperBle *pb_create(const char *name, int initiator) {
     return 0;
   memcpy(p->name, name, 41);
   /* NN provides ephemeral link encryption, not trusted-person authentication.
-     Auto-joining broadcast peers are untrusted, as with unverified Nearby. */
+     Auto-joining broadcast peers remain untrusted without identity verification. */
   const char *prologue = "PiperNet BLE stream v1";
   if (noise_handshakestate_new_by_name(
           &p->handshake, "Noise_NN_25519_ChaChaPoly_SHA256",

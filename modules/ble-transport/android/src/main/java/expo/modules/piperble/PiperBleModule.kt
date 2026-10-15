@@ -139,7 +139,7 @@ class PiperBleModule : Module() {
       require(
         bluetooth.isMultipleAdvertisementSupported && bluetooth.bluetoothLeAdvertiser != null
       ) {
-        "This phone cannot advertise Bluetooth LE for mesh sharing. Try Nearby in Settings."
+        "This phone does not support the Bluetooth LE advertising needed for sharing."
       }
       if (Build.VERSION.SDK_INT < 31) {
         val location = context.getSystemService(LocationManager::class.java)
@@ -263,7 +263,7 @@ class PiperBleModule : Module() {
           }
 
         override fun onStartFailure(code: Int) =
-          later(gen) { failed("Bluetooth advertising failed ($code). Try again or use Nearby.") }
+          later(gen) { failed("Bluetooth advertising failed ($code). Check that Bluetooth is on and try again.") }
       }
     advertising = advertise
     adapter

@@ -48,15 +48,12 @@ test("creates an independent starter with fresh identity and no generated files"
     assert.ok(existsSync(join(destination, "src/components/ui/button.tsx")));
     assert.ok(
       existsSync(
-        join(
-          destination,
-          "modules/nearby-transport/ios/PiperNearbyModule.swift",
-        ),
+        join(destination, "modules/ble-transport/ios/PiperBleModule.swift"),
       ),
     );
     assert.ok(
       existsSync(
-        join(destination, "modules/nearby-transport/android/build.gradle"),
+        join(destination, "modules/media-inspector/android/build.gradle"),
       ),
     );
     for (const name of [

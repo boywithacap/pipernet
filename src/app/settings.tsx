@@ -17,7 +17,7 @@ import { formatBytes } from "@/lib/media-policy";
 import { requestSharingPermissions } from "@/lib/mesh/transport";
 import { waitForForeground } from "@/lib/app-foreground";
 import { isAppActive, subscribeAppActive } from "@/lib/app-state";
-import type { MeshSnapshot, MeshTransportMode } from "@/types/mesh";
+import type { MeshSnapshot } from "@/types/mesh";
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -35,7 +35,7 @@ export default function SettingsScreen() {
   function enable(value: boolean) {
     return run(async (signal) => {
       if (value) {
-        await requestSharingPermissions(state.transport);
+        await requestSharingPermissions();
         await waitForForeground({
           isActive: isAppActive,
           subscribe: subscribeAppActive,
@@ -44,20 +44,6 @@ export default function SettingsScreen() {
       }
       checkPermissionTask(signal);
       await meshCoordinator.configure({ enabled: value });
-    });
-  }
-
-  function changeTransport(transport: MeshTransportMode) {
-    if (busy || transport === state.transport) return;
-    return run(async (signal) => {
-      await requestSharingPermissions(transport);
-      await waitForForeground({
-        isActive: isAppActive,
-        subscribe: subscribeAppActive,
-        signal,
-      });
-      checkPermissionTask(signal);
-      await meshCoordinator.configure({ transport });
     });
   }
 
@@ -118,27 +104,13 @@ export default function SettingsScreen() {
               }
             />
           </View>
-          <View className="gap-3 pt-5">
-            <Text className="px-4 text-sm font-medium">Share using</Text>
-            <View className="flex-row gap-2">
-              {(["ble", "nearby"] as const).map((mode) => (
-                <Button
-                  key={mode}
-                  variant={state.transport === mode ? "primary" : "surface"}
-                  disabled={busy || state.status === "loading"}
-                  accessibilityState={{ selected: state.transport === mode }}
-                  onPress={() => void changeTransport(mode)}
-                >
-                  {mode === "ble" ? "Bluetooth" : "Nearby"}
-                </Button>
-              ))}
-            </View>
-            <Text className="px-4 text-xs leading-[18px] text-muted-foreground">
-              {state.transport === "ble"
-                ? "Phones connect automatically over Bluetooth. Wi-Fi is optional. Videos may take longer; interrupted files resume when phones reconnect."
-                : "Use Nearby on both phones for faster transfers. Keep Bluetooth and Wi-Fi on. Android needs Google Play services."}{" "}
-              Select the same option on both phones and keep PiperNet open.
-              Connected phones can view and keep shared media.
+          <View className="gap-2 px-4 pt-5">
+            <Text className="text-sm font-medium">Bluetooth sharing</Text>
+            <Text className="text-xs leading-[18px] text-muted-foreground">
+              Phones connect automatically with Bluetooth on and PiperNet open.
+              Internet and Wi-Fi aren’t needed. Videos may take longer;
+              interrupted transfers resume when phones reconnect. Connected
+              phones can view and keep shared media.
             </Text>
           </View>
           <View className="gap-3 py-5">

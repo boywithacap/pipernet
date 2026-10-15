@@ -54,16 +54,19 @@ public final class PiperMediaStampModule: Module {
   private static func drawStamp(_ text: String, size: CGSize) {
     // Size for the final small mesh image, with room for subsequent video compression.
     let edge = min(size.width, size.height)
-    let font = UIFont.monospacedSystemFont(ofSize: max(10, edge * 0.055), weight: .medium)
-    let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: UIColor.white]
+    let font = UIFont.monospacedDigitSystemFont(ofSize: max(9, edge * 0.035), weight: .medium)
+    let shadow = NSShadow()
+    shadow.shadowColor = UIColor.black
+    shadow.shadowOffset = CGSize(width: 0, height: 1)
+    shadow.shadowBlurRadius = max(1, edge * 0.003)
+    let attributes: [NSAttributedString.Key: Any] = [
+      .font: font, .foregroundColor: UIColor.white,
+      .strokeColor: UIColor.black.withAlphaComponent(0.82), .strokeWidth: -3,
+      .shadow: shadow,
+    ]
     let labelSize = (text as NSString).size(withAttributes: attributes)
-    let padding = max(4, edge * 0.02)
-    let margin = padding * 1.5
-    let rect = CGRect(x: margin, y: size.height - labelSize.height - padding * 2 - margin,
-                      width: labelSize.width + padding * 2, height: labelSize.height + padding * 2)
-    UIColor.black.withAlphaComponent(0.65).setFill()
-    UIBezierPath(roundedRect: rect, cornerRadius: padding).fill()
-    (text as NSString).draw(at: CGPoint(x: rect.minX + padding, y: rect.minY + padding), withAttributes: attributes)
+    let margin = max(6, edge * 0.03)
+    (text as NSString).draw(at: CGPoint(x: margin, y: size.height - labelSize.height - margin), withAttributes: attributes)
   }
 
   private func stampPhoto(_ uri: String, text: String, quality: Double) throws -> String {

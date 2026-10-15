@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import { randomUUID } from "expo-crypto";
 import { createStore } from "zustand/vanilla";
 import { useStore } from "zustand";
-import native from "../../modules/nearby-transport";
+import native from "../../modules/media-inspector";
 import {
   deleteTemporaryFile,
   mediaUri,
@@ -30,7 +30,7 @@ export const meshCoordinator = new MeshCoordinator({
     uri: mediaUri,
     hash: async (uri) => {
       if (!native)
-        throw new Error("Offline sharing needs a development build.");
+        throw new Error("Media processing needs an updated PiperNet app.");
       return native.hashFile(uri);
     },
     validate: prepareReceivedMedia,

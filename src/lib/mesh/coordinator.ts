@@ -5,7 +5,6 @@ import type {
   MeshJournal,
   MeshPeer,
   MeshSnapshot,
-  MeshTransportMode,
   TransportEvent,
 } from "../../types/mesh";
 import type { MediaDraft } from "../../types/media";
@@ -72,7 +71,6 @@ export class MeshCoordinator {
   private unsubscribe?: () => void;
   private snapshot: MeshSnapshot = {
     updatedAt: 0,
-    transport: "ble",
     status: "loading",
     enabled: false,
     relay: false,
@@ -96,7 +94,6 @@ export class MeshCoordinator {
     if (error) this.lastError = error;
     this.snapshot = {
       updatedAt: this.now(),
-      transport: this.journal?.transport ?? "ble",
       status: !this.deps.transport.available
         ? "unavailable"
         : this.lastError
@@ -132,7 +129,7 @@ export class MeshCoordinator {
     const next = this.operations.then(action);
     this.operations = next.catch((error) =>
       this.publish(
-        error instanceof Error ? error.message : "Nearby sharing failed.",
+        error instanceof Error ? error.message : "Bluetooth sharing failed.",
       ),
     );
     return next;
@@ -158,7 +155,7 @@ export class MeshCoordinator {
           seen: [],
         });
       } else {
-        const j = JSON.parse(raw) as MeshJournal;
+        const j = JSON.parse(raw) as MeshJournal & { transport?: unknown };
         if (
           !j ||
           j.version !== 1 ||
@@ -204,9 +201,13 @@ export class MeshCoordinator {
           )
         )
           throw new Error("Invalid mesh receipts.");
-        this.journal = j;
+        if (j.transport !== undefined) {
+          // Older releases saved a transport choice. Preserve every record and
+          // sharing preference while retiring that choice, including Nearby.
+          delete j.transport;
+          await this.commit(j);
+        } else this.journal = j;
       }
-      this.deps.transport.select?.(this.journal!.transport ?? "ble");
       this.unsubscribe = this.deps.transport.subscribe((event) => {
         void this.serial(() => this.event(event)).catch(() => undefined);
       });
@@ -222,19 +223,12 @@ export class MeshCoordinator {
       });
     return this.initialization;
   }
-  configure(options: {
-    enabled?: boolean;
-    relay?: boolean;
-    transport?: MeshTransportMode;
-  }) {
+  configure(options: { enabled?: boolean; relay?: boolean }) {
     return this.serial(async () => {
       await this.initialize();
       this.lastError = undefined;
-      const modeChanged =
-        options.transport !== undefined &&
-        options.transport !== (this.journal!.transport ?? "ble");
       await this.commit({ ...this.journal!, ...options });
-      if ((options.enabled === true || modeChanged) && this.running) {
+      if (options.enabled === true && this.running) {
         // An explicit Retry restarts radio discovery after permissions or radios change.
         await this.deps.transport.stop();
         this.running = false;
@@ -245,8 +239,6 @@ export class MeshCoordinator {
         this.outgoing = undefined;
         this.incoming = undefined;
       }
-      if (modeChanged)
-        this.deps.transport.select?.(this.journal!.transport ?? "ble");
       if (
         options.relay === false &&
         this.outgoing &&

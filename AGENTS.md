@@ -44,6 +44,7 @@ Docs: https://docs.expo.dev/eas/index.md
 
 ### Physical-device testing
 
+- Prepare changes and run local checks by default. Do not start EAS builds or TestFlight submissions unless the user explicitly requests them; the user runs the release commands when ready.
 - Default to standalone tester releases: `bun run build:testflight` for iOS (production build with automatic TestFlight submission) and `bun run build:android-release` for Android (signed release APK for direct installation).
 - These builds embed the JavaScript bundle and run without Metro. Use them for Bluetooth/mesh acceptance tests on physical phones.
 - Only build development clients or simulator builds when explicitly requested for debugging. Native changes require a new tester binary; compatible JavaScript/assets can use the existing EAS Update workflow.

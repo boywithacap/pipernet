@@ -1,37 +1,35 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  androidNearbyPermissions,
-  checkAndroidNearbyPermissions,
-} from "../src/lib/android-nearby-permissions";
+  androidBluetoothPermissions,
+  checkAndroidBluetoothPermissions,
+} from "../src/lib/android-bluetooth-permissions";
 import { PermissionDeniedError } from "../src/lib/permission-errors";
 
-test("Android 15 requests nearby Bluetooth/Wi-Fi access without obsolete location/storage prompts", () => {
-  assert.deepEqual(androidNearbyPermissions(35), [
-    "android.permission.BLUETOOTH_ADVERTISE",
-    "android.permission.BLUETOOTH_CONNECT",
-    "android.permission.BLUETOOTH_SCAN",
-    "android.permission.NEARBY_WIFI_DEVICES",
-  ]);
-});
-
-test("Android 12/12L pairs fine and coarse location; older OS versions avoid unknown nearby permissions", () => {
-  for (const api of [31, 32]) {
-    const permissions = androidNearbyPermissions(api);
-    assert.ok(
-      permissions.includes("android.permission.ACCESS_COARSE_LOCATION"),
-    );
-    assert.ok(permissions.includes("android.permission.ACCESS_FINE_LOCATION"));
-    assert.ok(!permissions.includes("android.permission.NEARBY_WIFI_DEVICES"));
+test("modern Android requests only Bluetooth permissions, without Wi-Fi, storage or location", () => {
+  for (const api of [31, 32, 33, 35, 36]) {
+    assert.deepEqual(androidBluetoothPermissions(api), [
+      "android.permission.BLUETOOTH_ADVERTISE",
+      "android.permission.BLUETOOTH_CONNECT",
+      "android.permission.BLUETOOTH_SCAN",
+    ]);
   }
-  assert.deepEqual(androidNearbyPermissions(28), [
+});
+
+test("legacy Android requests only its required Bluetooth discovery location access", () => {
+  for (const api of [29, 30]) {
+    assert.deepEqual(androidBluetoothPermissions(api), [
+      "android.permission.ACCESS_COARSE_LOCATION",
+      "android.permission.ACCESS_FINE_LOCATION",
+    ]);
+  }
+  assert.deepEqual(androidBluetoothPermissions(28), [
     "android.permission.ACCESS_COARSE_LOCATION",
-    "android.permission.READ_EXTERNAL_STORAGE",
   ]);
 });
 
-test("already granted nearby permissions do not open a second prompt", async () => {
-  await checkAndroidNearbyPermissions({
+test("already granted Bluetooth permissions do not open a second prompt", async () => {
+  await checkAndroidBluetoothPermissions({
     version: 35,
     check: async () => true,
     request: async () => {
@@ -41,8 +39,8 @@ test("already granted nearby permissions do not open a second prompt", async () 
 });
 
 test("an approximate-to-precise upgrade includes coarse permission even when it is granted", async () => {
-  await checkAndroidNearbyPermissions({
-    version: 31,
+  await checkAndroidBluetoothPermissions({
+    version: 30,
     check: async (permission) =>
       permission !== "android.permission.ACCESS_FINE_LOCATION",
     request: async (permissions) => {
@@ -60,7 +58,7 @@ test("an approximate-to-precise upgrade includes coarse permission even when it 
 test("denial, permanent denial, and approximate-only access return useful recovery errors", async () => {
   for (const status of ["denied", "never_ask_again"]) {
     await assert.rejects(
-      checkAndroidNearbyPermissions({
+      checkAndroidBluetoothPermissions({
         version: 35,
         check: async () => false,
         request: async (permissions) =>
@@ -74,8 +72,8 @@ test("denial, permanent denial, and approximate-only access return useful recove
     );
   }
   await assert.rejects(
-    checkAndroidNearbyPermissions({
-      version: 31,
+    checkAndroidBluetoothPermissions({
+      version: 30,
       check: async () => false,
       request: async (permissions) =>
         Object.fromEntries(
@@ -93,14 +91,14 @@ test("denial, permanent denial, and approximate-only access return useful recove
 
 test("revoked permissions are detected without prompting during background resume", async () => {
   await assert.rejects(
-    checkAndroidNearbyPermissions({ version: 35, check: async () => false }),
+    checkAndroidBluetoothPermissions({ version: 35, check: async () => false }),
     /device settings/,
   );
 });
 
 test("an interrupted native permission request propagates safely for an explicit retry", async () => {
   await assert.rejects(
-    checkAndroidNearbyPermissions({
+    checkAndroidBluetoothPermissions({
       version: 35,
       check: async () => false,
       request: async () => {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { requestNearbyAccess } from "../src/lib/nearby-permissions";
+import { requestSharingAccess } from "../src/lib/sharing-permissions";
 
 test("onboarding resolves permission prompts before starting and stops discovery before finishing", async () => {
   const calls: string[] = [];
@@ -12,7 +12,7 @@ test("onboarding resolves permission prompts before starting and stops discovery
   const started = new Promise<void>((resolve) => {
     notifyStarted = resolve;
   });
-  const access = requestNearbyAccess({
+  const access = requestSharingAccess({
     requestPermissions: async () => {
       calls.push("permissions");
     },
@@ -38,7 +38,7 @@ test("onboarding resolves permission prompts before starting and stops discovery
 test("denied platform permissions do not start nearby discovery", async () => {
   let starts = 0;
   await assert.rejects(
-    requestNearbyAccess({
+    requestSharingAccess({
       requestPermissions: async () => {
         throw new Error("Permission denied");
       },
@@ -58,7 +58,7 @@ test("denied platform permissions do not start nearby discovery", async () => {
 test("a failed native start is stopped and reported so onboarding can retry", async () => {
   let stops = 0;
   await assert.rejects(
-    requestNearbyAccess({
+    requestSharingAccess({
       requestPermissions: async () => {},
       transport: {
         available: true,
@@ -80,11 +80,11 @@ test("an unavailable native transport does not request unrelated permissions", a
     throw new Error("Unexpected native request");
   };
   await assert.rejects(
-    requestNearbyAccess({
+    requestSharingAccess({
       requestPermissions: unexpected,
       transport: { available: false, start: unexpected, stop: unexpected },
     }),
-    /development build/,
+    /updated PiperNet app/,
   );
 });
 
@@ -94,7 +94,7 @@ test("permission approval waits for the app to resume before native startup", as
   const foreground = new Promise<void>((resolve) => {
     resume = resolve;
   });
-  const access = requestNearbyAccess({
+  const access = requestSharingAccess({
     requestPermissions: async () => {
       calls.push("permissions");
     },
@@ -120,7 +120,7 @@ test("leaving the screen during an OS prompt cannot start discovery", async () =
   const controller = new AbortController();
   let starts = 0;
   await assert.rejects(
-    requestNearbyAccess({
+    requestSharingAccess({
       signal: controller.signal,
       requestPermissions: async () => {
         controller.abort();
@@ -142,7 +142,7 @@ test("an interrupted native start is stopped before cancellation returns", async
   const controller = new AbortController();
   let stopped = false;
   await assert.rejects(
-    requestNearbyAccess({
+    requestSharingAccess({
       signal: controller.signal,
       requestPermissions: async () => {},
       transport: {
@@ -162,7 +162,7 @@ test("an interrupted native start is stopped before cancellation returns", async
 
 test("cleanup errors do not replace the permission/startup failure", async () => {
   await assert.rejects(
-    requestNearbyAccess({
+    requestSharingAccess({
       requestPermissions: async () => {},
       transport: {
         available: true,

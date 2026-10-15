@@ -2,9 +2,9 @@
 
 PiperNet captures, compresses, and shares photos and short videos between nearby iOS and Android phones without internet. Built with Expo and React Native.
 
-Onboarding enables Bluetooth sharing. Phones discover and connect automatically, exchange missing media, and relay received files when enabled. Use the Inbox gear to change sharing options. Bluetooth is the default; Wi-Fi is optional. Keep the app open. Both phones must select the same transport in Settings.
+Onboarding enables Bluetooth sharing. Phones discover and connect automatically, exchange missing media, and relay received files when enabled. Use the Inbox gear to change sharing options. Sharing uses Bluetooth only; Wi-Fi and internet are not required. Keep PiperNet open with Bluetooth enabled on participating phones.
 
-**Current status:** automatic BLE discovery, encrypted resumable photo/video transfers, persistent broadcast queues, receipts, and bounded store-and-forward are implemented. Nearby remains available in Settings. BLE tester releases are built; physical-device interoperability and throughput still need validation. Radio jamming can block delivery; captures remain local until a link returns.
+**Current status:** automatic BLE discovery, encrypted resumable photo/video transfers, persistent broadcast queues, receipts, and bounded store-and-forward are implemented. Google Nearby has been removed from source. This removal and Save to Photos/Gallery need a new tester binary; physical-device BLE interoperability and throughput still need validation. Radio jamming can block delivery; captures remain local until a link returns.
 
 ## Build for physical phones
 
